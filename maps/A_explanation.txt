@@ -1,0 +1,2 @@
+"." - traversable terrain
+"@" - non-traversable terrain
