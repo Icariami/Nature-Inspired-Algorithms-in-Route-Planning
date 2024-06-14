@@ -1,80 +1,86 @@
 import numpy as np
+import random
+
+from visualize import visualize_grid
 
 
-class AntColonyOptimizer:
-    def __init__(self, cost_matrix, num_ants, num_iterations, decay, alpha=1, beta=2):
-        self.cost_matrix = cost_matrix
-        self.pheromone = np.ones(self.cost_matrix.shape) / len(cost_matrix)
-        self.num_ants = num_ants
-        self.num_iterations = num_iterations
-        self.decay = decay
+class ACO:
+    def __init__(self, grid, ants=10, alpha=1.0, beta=2.0, evaporation=0.5, iterations=100):
+        self.grid = grid
+        self.ants = ants
         self.alpha = alpha
         self.beta = beta
+        self.evaporation = evaporation
+        self.iterations = iterations
+        self.pheromone = np.ones(grid.shape)
 
-    def run(self, start, end):
-        for _ in range(self.num_iterations):
-            all_paths = self.construct_solutions(start, end)
-            self.update_pheromone(all_paths)
-        shortest_path = min(all_paths, key=lambda x: x[1])
-        return shortest_path
+    def heuristic(self, start, end):
+        return np.linalg.norm(np.array(start) - np.array(end))
 
-    def construct_solutions(self, start, end):
+    def find_path(self, start, end):
         all_paths = []
-        for _ in range(self.num_ants):
-            path, cost = self.construct_single_solution(start, end)
-            all_paths.append((path, cost))
-        return all_paths
+        for iteration in range(self.iterations):
+            if iteration % 100 == 0:
+                print(iteration/100, "of", self.iterations/100)
 
-    def construct_single_solution(self, start, end):
+            for _ in range(self.ants):
+                path = self.construct_path(start, end)
+                if path:
+                    all_paths.append((path, self.path_length(path)))
+
+            all_paths.sort(key=lambda x: x[1])
+            self.update_pheromone(all_paths)
+
+        if len(all_paths) == 0:
+            return None
+        best_path, _ = all_paths[0]
+        return best_path
+
+    def construct_path(self, start, end):
         path = [start]
-        visited = set()
-        visited.add(start)
-        current = start
-        total_cost = 0
+        while path[-1] != end:
+            current = path[-1]
+            neighbors = self.get_neighbors(current)
+            moves = [(neighbor, self.move_probability(current, neighbor, end, path))
+                     for neighbor in neighbors if neighbor not in path]
 
-        while current != end:
-            moves = self.get_possible_moves(current, visited)
             if not moves:
-                return path, float('inf')  # Return infinitely bad path if stuck
+                return None
 
-            move_probs = self.calculate_move_probs(current, moves)
-            next_move = np.random.choice(moves, p=move_probs)
+            next_move = random.choices([move[0] for move in moves], weights=[max(min(move[1], 10**10), 0.001) for move in moves])[0]
             path.append(next_move)
-            total_cost += self.cost_matrix[current][next_move]
-            visited.add(next_move)
-            current = next_move
 
-        return path, total_cost
+        return path
 
-    def get_possible_moves(self, position, visited):
-        # Example to get possible moves in 8 directions
-        moves = []
-        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-        for d in directions:
-            move = (position[0] + d[0], position[1] + d[1])
-            if 0 <= move[0] < self.cost_matrix.shape[0] and 0 <= move[1] < self.cost_matrix.shape[1]:
-                if move not in visited and self.cost_matrix[move] > 0:
-                    moves.append(move)
-        return moves
+    def move_probability(self, current, neighbor, end, path):
+        tau = self.pheromone[neighbor]
+        with np.errstate(divide='ignore'):
+            eta = 1 / self.heuristic(neighbor, end)
 
-    def calculate_move_probs(self, current, moves):
-        move_probs = []
-        for move in moves:
-            move_prob = self.pheromone[current][move] ** self.alpha * (self.cost_matrix[current][move] ** -self.beta)
-            move_probs.append(move_prob)
-        return move_probs / np.sum(move_probs)
+        result = (tau ** self.alpha) * (eta ** self.beta)
+        # if result > 20:
+        #     print(current, neighbor, end, path, sep="\n")
+        #     print(result)
+        #     exit()
+
+        return result
 
     def update_pheromone(self, all_paths):
-        self.pheromone *= self.decay
-        for path, cost in all_paths:
-            for move in path:
-                self.pheromone[move[0], move[1]] += 1.0 / cost
+        self.pheromone *= self.evaporation
+        for path, length in all_paths:
+            for pos in path:
+                self.pheromone[pos] += 1.0 / length
+
+    def get_neighbors(self, pos):
+        x, y = pos
+        potential_neighbors = [(x - 1, y - 1), (x - 1, y), (x - 1, y + 1),
+                               (x, y - 1), (x, y + 1),
+                               (x + 1, y - 1), (x + 1, y), (x + 1, y + 1)]
+        return [(nx, ny) for nx, ny in potential_neighbors
+                if 0 <= nx < self.grid.shape[0] and 0 <= ny < self.grid.shape[1]
+                and self.grid[nx, ny] != 1]
+
+    def path_length(self, path):
+        return sum(self.heuristic(path[i], path[i + 1]) for i in range(len(path) - 1))
 
 
-if __name__ == "__main__":
-    n = 10
-    # Example usage:
-    cost_matrix = np.array([...])  # Your cost matrix where high values represent obstacles
-    aco = AntColonyOptimizer(cost_matrix, num_ants=10, num_iterations=100, decay=0.95)
-    shortest_path = aco.run((0, 0), (n - 1, n - 1))  # From top-left to bottom-right
-    print(shortest_path)

@@ -1,2 +1,0 @@
-Scenario ID |      map name      | map width | map height | x start point | y start point | x end point | y end point | optimal route length
-    0	    | Shanghai_2_512.map | 	  512    |	   512	  |      65	      |       326	  |     63	    |      328	  |      2.82842712

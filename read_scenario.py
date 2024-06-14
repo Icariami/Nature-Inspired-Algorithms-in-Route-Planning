@@ -19,9 +19,10 @@ def read_scenario(file_path):
     return scenarios
 
 
-# scenarios = read_scenario('scenarios/Berlin_0_256.map.scen')
-# for scenario in scenarios:
-#     print(scenario)
-#
-# print("")
-# print(scenarios[0])
+if __name__ == '__main__':
+    scenarios = read_scenario('scenarios/Berlin_0_256.map.scen')
+    for scenario in scenarios:
+        print(scenario)
+
+    print("")
+    print(scenarios[0])
