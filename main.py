@@ -12,7 +12,7 @@ def main():
 
     grid = read_map('maps/den009d.map')
 
-    aco = ACO(grid, ants=10, alpha=0.5, beta=1.0, evaporation=0.5, iterations=1000)
+    aco = ACO(grid, ants=10, alpha=0.5, beta=1.0, evaporation=0.5, iterations=100)
     start = (3, 5)
     end = (5, 40)
     path = aco.find_path(start, end)
